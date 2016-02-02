@@ -29,7 +29,7 @@ def SendMessage(service, user_id, message):
   except errors.HttpError, error:
     print 'An error occurred: %s' % error
 
-def RFC3339Convert(rfc_time):
+def RFC3339Convert_to_readable(rfc_time):
     default_time_offset = "EST"
     feed.date.rfc3339.set_default_time_offset(default_time_offset)
     tf = feed.date.rfc3339.tf_from_timestamp(rfc_time)
@@ -41,6 +41,19 @@ def RFC3339Convert(rfc_time):
         fixed_hour = dt.hour-12
         noon = 'PM'
     return '%s-%s-%s %s:%s %s' % (dt.year, dt.month, dt.day, fixed_hour, dt.minute, noon)
+
+def RFC3339Convert_to_dt(rfc_time):
+    default_time_offset = "EST"
+    feed.date.rfc3339.set_default_time_offset(default_time_offset)
+    timefloat = feed.date.rfc3339.tf_from_timestamp(rfc_time)
+    timestamp = feed.date.rfc3339.timestamp_from_tf(timefloat)
+    dt = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S' + default_time_offset)
+    return dt
+
+def Time_diff(early, late):
+    diff = late - early
+    diff_chop_ms = diff - datetime.timedelta(microseconds=diff.microseconds)
+    return diff_chop_ms
 
 def main():
 
@@ -75,9 +88,10 @@ def main():
         for component, value in instance["components"].iteritems():
             if "job" in value:
                 if value["job"]["state"] == 'Running':
-		    message += '%s %s started at: %s\n' % (instance["uuid"], component, RFC3339Convert(value["job"]["started_at"]))
+		    message += '%s\n%s started at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["started_at"]))
+		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),datetime.datetime.now()))
 		if value["job"]["state"] == 'Queued':
-		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert(value["job"]["created_at"]))
+		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["created_at"]))
         message += '\n'
 
     store = file.Storage(options.storage)
