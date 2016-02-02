@@ -10,6 +10,8 @@ from email.mime.text import MIMEText
 import base64
 from apiclient import errors
 import argparse
+import datetime
+import feed.date.rfc3339
 
 def CreateMessage(sender, to, subject, message_text):
   message = MIMEText(message_text)
@@ -26,6 +28,19 @@ def SendMessage(service, user_id, message):
     return message
   except errors.HttpError, error:
     print 'An error occurred: %s' % error
+
+def RFC3339Convert(rfc_time):
+    default_time_offset = "EST"
+    feed.date.rfc3339.set_default_time_offset(default_time_offset)
+    tf = feed.date.rfc3339.tf_from_timestamp(rfc_time)
+    ts = feed.date.rfc3339.timestamp_from_tf(tf)
+    dt = datetime.datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S' + default_time_offset)
+    fixed_hour = dt.hour
+    noon = 'AM'
+    if dt.hour > 12:
+        fixed_hour = dt.hour-12
+        noon = 'PM'
+    return '%s-%s-%s %s:%s %s' % (dt.year, dt.month, dt.day, fixed_hour, dt.minute, noon)
 
 def main():
 
@@ -60,9 +75,9 @@ def main():
         for component, value in instance["components"].iteritems():
             if "job" in value:
                 if value["job"]["state"] == 'Running':
-		    message += '%s %s started at: %s\n' % (instance["uuid"], component, value["job"]["started_at"])
-		if value["job"]["state"] == 'Queued'
-		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, value["job"]["created_at"])
+		    message += '%s %s started at: %s\n' % (instance["uuid"], component, RFC3339Convert(value["job"]["started_at"]))
+		if value["job"]["state"] == 'Queued':
+		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert(value["job"]["created_at"]))
         message += '\n'
 
     store = file.Storage(options.storage)
