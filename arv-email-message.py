@@ -52,7 +52,7 @@ def main():
     message = 'Current running pipelines on wx7k5: \n\n'
     num_running = arvados.api('v1').pipeline_instances().list(
                       filters=[["state","=","RunningOnServer"]]).execute()["items_available"]
-    message += 'There are currently ' + str(num_running) + ' pipelines running. \n\n'
+    message += 'There are currently %s pipelines running. \n\n' % str(num_running)
 
     for instance_num in range(0,num_running):
         instance = arvados.api('v1').pipeline_instances().list(
@@ -60,7 +60,9 @@ def main():
         for component, value in instance["components"].iteritems():
             if "job" in value:
                 if value["job"]["state"] == 'Running':
-                    message += instance["uuid"] + ' ' + component + ' started at: ' + value["job"]["started_at"] + '\n'
+		    message += '%s %s started at: %s\n' % (instance["uuid"], component, value["job"]["started_at"])
+		if value["job"]["state"] == 'Queued'
+		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, value["job"]["created_at"])
         message += '\n'
 
     store = file.Storage(options.storage)
