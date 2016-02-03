@@ -12,6 +12,7 @@ from apiclient import errors
 import argparse
 import datetime
 import feed.date.rfc3339
+from pytz import timezone
 
 def CreateMessage(sender, to, subject, message_text):
   message = MIMEText(message_text)
@@ -55,6 +56,13 @@ def Time_diff(early, late):
     diff_chop_ms = diff - datetime.timedelta(microseconds=diff.microseconds)
     return diff_chop_ms
 
+def Current_time():
+    est = timezone('US/Eastern')
+    time = datetime.datetime.now(est)
+    time = time.replace(microsecond=0)
+    time = time.replace(tzinfo=None)
+    return time
+
 def main():
 
     SCOPES = [
@@ -89,7 +97,7 @@ def main():
             if "job" in value:
                 if value["job"]["state"] == 'Running':
 		    message += '%s\n%s started at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["started_at"]))
-		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),datetime.datetime.now()))
+		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),Current_time()))
 		if value["job"]["state"] == 'Queued':
 		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["created_at"]))
         message += '\n'
