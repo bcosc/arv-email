@@ -81,11 +81,13 @@ def main():
         '-c', '--client', dest='client_secret', required=True, help="The path to your client_secret.json (required)")
     parser.add_argument(
         '-s', '--storage', dest='storage', required=True, help="The path to your stored credentials (required)")
+    parser.add_argument(
+	'-l', '--location', dest='location', required=True, help="The location of the cluster (required)")
     options = parser.parse_args()
     CLIENT_SECRET = options.client_secret
 
     # All current RunningOnServer
-    message = 'Current running pipelines on wx7k5: \n\n'
+    message = 'Current running pipelines on %s: \n\n' % options.location
     num_running = arvados.api('v1').pipeline_instances().list(
                       filters=[["state","=","RunningOnServer"]]).execute()["items_available"]
     message += 'There are currently %s pipelines running. \n\n' % str(num_running)
@@ -99,7 +101,7 @@ def main():
 		    message += '%s\n%s started at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["started_at"]))
 		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),Current_time()))
 		if value["job"]["state"] == 'Queued':
-		    message += '%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["created_at"]))
+		    message += '%s\n%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["created_at"]))
         message += '\n'
 
     store = file.Storage(options.storage)
@@ -110,7 +112,7 @@ def main():
         credz = tools.run_flow(flow, store, flags)
     GMAIL = build('gmail', 'v1', http=credz.authorize(Http()))
 
-    message = CreateMessage(options.from_email, options.to_email, 'Pipeline digest', message)
+    message = CreateMessage(options.from_email, options.to_email, '[Pipelines] Pipeline digest on %s' % options.location, message)
     SendMessage(GMAIL, 'me', message)
 
 if __name__ == '__main__':
