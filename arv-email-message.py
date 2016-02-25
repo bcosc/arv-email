@@ -112,7 +112,7 @@ def main():
         credz = tools.run_flow(flow, store, flags)
     GMAIL = build('gmail', 'v1', http=credz.authorize(Http()))
 
-    message = CreateMessage(options.from_email, options.to_email, '[Pipelines] Pipeline digest on %s' % options.location, message)
+    message = CreateMessage(options.from_email, options.to_email, '%s pipelines running on %s' % (str(num_running), options.location), message)
     SendMessage(GMAIL, 'me', message)
 
 if __name__ == '__main__':
