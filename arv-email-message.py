@@ -87,10 +87,9 @@ def main():
     CLIENT_SECRET = options.client_secret
 
     # All current RunningOnServer
-    message = 'Current running pipelines on %s: \n\n' % options.location
     num_running = arvados.api('v1').pipeline_instances().list(
                       filters=[["state","=","RunningOnServer"]]).execute()["items_available"]
-    message += 'There are currently %s pipelines running. \n\n' % str(num_running)
+    message = 'There are currently %s pipelines running on %s. \n\n' % (str(num_running), options.location)
 
     for instance_num in range(0,num_running):
         instance = arvados.api('v1').pipeline_instances().list(
