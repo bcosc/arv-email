@@ -18,7 +18,7 @@ from pytz import timezone
 import sys
 import os
 
-def CreateMessage(sender, to, subject, message_text, file=''):
+def CreateMessage(sender, to, subject, message_text, files=''):
   message = MIMEMultipart()
   message['to'] = to
   message['from'] = sender
@@ -27,34 +27,34 @@ def CreateMessage(sender, to, subject, message_text, file=''):
   msg = MIMEText(message_text)
   message.attach(msg)
 
-  if not file:
+  if not files:
     return {'raw': base64.urlsafe_b64encode(message.as_string())}
+  for file in files:
+    content_type, encoding = mimetypes.guess_type(file)
 
-  content_type, encoding = mimetypes.guess_type(file)
-
-  if content_type is None or encoding is not None:
-    content_type = 'application/octet-stream'
-  main_type, sub_type = content_type.split('/', 1)
-  if main_type == 'text':
-    fp = open(file, 'rb')
-    msg = MIMEText(fp.read(), _subtype=sub_type)
-    fp.close()
-  elif main_type == 'image':
-    fp = open(file, 'rb')
-    msg = MIMEImage(fp.read(), _subtype=sub_type)
-    fp.close()
-  elif main_type == 'audio':
-    fp = open(file, 'rb')
-    msg = MIMEAudio(fp.read(), _subtype=sub_type)
-    fp.close()
-  else:
-    fp = open(file, 'rb')
-    msg = MIMEBase(main_type, sub_type)
-    msg.set_payload(fp.read())
-    fp.close()
-  filename = os.path.basename(file)
-  msg.add_header('Content-Disposition', 'attachment', filename=filename)
-  message.attach(msg)
+    if content_type is None or encoding is not None:
+      content_type = 'application/octet-stream'
+    main_type, sub_type = content_type.split('/', 1)
+    if main_type == 'text':
+      fp = open(file, 'rb')
+      msg = MIMEText(fp.read(), _subtype=sub_type)
+      fp.close()
+    elif main_type == 'image':
+      fp = open(file, 'rb')
+      msg = MIMEImage(fp.read(), _subtype=sub_type)
+      fp.close()
+    elif main_type == 'audio':
+      fp = open(file, 'rb')
+      msg = MIMEAudio(fp.read(), _subtype=sub_type)
+      fp.close()
+    else:
+      fp = open(file, 'rb')
+      msg = MIMEBase(main_type, sub_type)
+      msg.set_payload(fp.read())
+      fp.close()
+    filename = os.path.basename(file)
+    msg.add_header('Content-Disposition', 'attachment', filename=filename)
+    message.attach(msg)
   return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
 def SendMessage(service, user_id, message):
@@ -122,7 +122,7 @@ def main():
     parser.add_argument(
         '-m', '--message', dest='message', required=False, default="no message!", help="The message body")
     parser.add_argument(
-        '-a', '--attachment', dest='attachment', required=False, help="An attachment to the email")
+        '-a', '--attachment', dest='attachment', required=False, nargs='*', help="An attachment to the email")
     parser.add_argument(
         '-d', '--header', dest='header', required=False, default="header", help="Email subject/header")
     options = parser.parse_args()
