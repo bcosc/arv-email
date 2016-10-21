@@ -123,6 +123,8 @@ def main():
         '-m', '--message', dest='message', required=False, default="no message!", help="The message body")
     parser.add_argument(
         '-a', '--attachment', dest='attachment', required=False, help="An attachment to the email")
+    parser.add_argument(
+        '-d', '--header', dest='header', required=False, default="header", help="Email subject/header")
     options = parser.parse_args()
     CLIENT_SECRET = options.client_secret
 
@@ -134,9 +136,9 @@ def main():
         credz = tools.run_flow(flow, store, flags)
     GMAIL = build('gmail', 'v1', http=credz.authorize(Http()))
     if not options.attachment:
-      message = CreateMessage(options.from_email, options.to_email, "header", options.message)
+      message = CreateMessage(options.from_email, options.to_email, options.header, options.message)
     else:
-      message = CreateMessage(options.from_email, options.to_email, "header", options.message, options.attachment)
+      message = CreateMessage(options.from_email, options.to_email, options.header, options.message, options.attachment)
     SendMessage(GMAIL, 'me', message)
 
 if __name__ == '__main__':
