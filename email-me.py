@@ -7,6 +7,8 @@ from googleapiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import mimetypes
 import base64
 from apiclient import errors
 import argparse
@@ -14,12 +16,45 @@ import datetime
 import feed.date.rfc3339
 from pytz import timezone
 import sys
+import os
 
-def CreateMessage(sender, to, subject, message_text):
-  message = MIMEText(message_text)
+def CreateMessage(sender, to, subject, message_text, file=''):
+  message = MIMEMultipart()
   message['to'] = to
   message['from'] = sender
   message['subject'] = subject
+
+  msg = MIMEText(message_text)
+  message.attach(msg)
+
+  if not file:
+    return {'raw': base64.urlsafe_b64encode(message.as_string())}
+
+  content_type, encoding = mimetypes.guess_type(file)
+
+  if content_type is None or encoding is not None:
+    content_type = 'application/octet-stream'
+  main_type, sub_type = content_type.split('/', 1)
+  if main_type == 'text':
+    fp = open(file, 'rb')
+    msg = MIMEText(fp.read(), _subtype=sub_type)
+    fp.close()
+  elif main_type == 'image':
+    fp = open(file, 'rb')
+    msg = MIMEImage(fp.read(), _subtype=sub_type)
+    fp.close()
+  elif main_type == 'audio':
+    fp = open(file, 'rb')
+    msg = MIMEAudio(fp.read(), _subtype=sub_type)
+    fp.close()
+  else:
+    fp = open(file, 'rb')
+    msg = MIMEBase(main_type, sub_type)
+    msg.set_payload(fp.read())
+    fp.close()
+  filename = os.path.basename(file)
+  msg.add_header('Content-Disposition', 'attachment', filename=filename)
+  message.attach(msg)
   return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
 def SendMessage(service, user_id, message):
@@ -85,7 +120,9 @@ def main():
     parser.add_argument(
       	'-l', '--location', dest='location', required=False, default="qr1hi", help="The location of the cluster (required)")
     parser.add_argument(
-        '-m', '--message', dest='message', required=False, default="no message!", help="The location of the cluster (required)")
+        '-m', '--message', dest='message', required=False, default="no message!", help="The message body")
+    parser.add_argument(
+        '-a', '--attachment', dest='attachment', required=False, help="An attachment to the email")
     options = parser.parse_args()
     CLIENT_SECRET = options.client_secret
 
@@ -96,8 +133,10 @@ def main():
         flow = client.flow_from_clientsecrets(CLIENT_SECRET, SCOPES)
         credz = tools.run_flow(flow, store, flags)
     GMAIL = build('gmail', 'v1', http=credz.authorize(Http()))
-
-    message = CreateMessage(options.from_email, options.to_email, "header", options.message)
+    if not options.attachment:
+      message = CreateMessage(options.from_email, options.to_email, "header", options.message)
+    else:
+      message = CreateMessage(options.from_email, options.to_email, "header", options.message, options.attachment)
     SendMessage(GMAIL, 'me', message)
 
 if __name__ == '__main__':
