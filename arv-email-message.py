@@ -94,13 +94,14 @@ def main():
     for instance_num in range(0,num_running):
         instance = arvados.api('v1').pipeline_instances().list(
                        filters=[["state","=","RunningOnServer"]]).execute()["items"][instance_num]
+        instance_name = arvados.api().pipeline_instances().list(filters=[["uuid","=", instance["uuid"]]]).execute().items()[1][1][0]['name']
         for component, value in instance["components"].iteritems():
             if "job" in value:
                 if value["job"]["state"] == 'Running':
-		    message += '%s\n%s started at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["started_at"]))
+		    message += '%s\n%s started at: %s\n' % (instance_name, component, RFC3339Convert_to_readable(value["job"]["started_at"]))
 		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),Current_time()))
 		if value["job"]["state"] == 'Queued':
-		    message += '%s\n%s is queued, it was created at: %s\n' % (instance["uuid"], component, RFC3339Convert_to_readable(value["job"]["created_at"]))
+		    message += '%s\n%s is queued, it was created at: %s\n' % (instance_name, component, RFC3339Convert_to_readable(value["job"]["created_at"]))
         message += '\n'
 
     store = file.Storage(options.storage)
