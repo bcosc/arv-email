@@ -11,12 +11,8 @@ import base64
 from apiclient import errors
 import argparse
 import datetime
-import sys
-sys.path.append("/home/bcosc/pyfeed-0.7.4")
 import feed.date.rfc3339
 from pytz import timezone
-sys.path.append("/home/bcosc/gitrepos/arvados-tools")
-import subprocess
 
 def CreateMessage(sender, to, subject, message_text):
   message = MIMEText(message_text)
@@ -86,32 +82,13 @@ def main():
     parser.add_argument(
         '-s', '--storage', dest='storage', required=True, help="The path to your stored credentials (required)")
     parser.add_argument(
-	      '-l', '--location', dest='location', required=True, help="The location of the cluster (required)")
+	'-l', '--location', dest='location', required=True, help="The location of the cluster (required)")
     options = parser.parse_args()
     CLIENT_SECRET = options.client_secret
 
     # All current RunningOnServer
-    num_running = arvados.api('v1').pipeline_instances().list(
-                      filters=[["state","=","RunningOnServer"]]).execute()["items_available"]
-    message = 'There are currently %s pipelines running on %s. \n\n' % (str(num_running), options.location)
-
-    for instance_num in range(0,num_running):
-        instance = arvados.api('v1').pipeline_instances().list(
-                       filters=[["state","=","RunningOnServer"]]).execute()["items"][instance_num]
-        instance_name = arvados.api().pipeline_instances().list(filters=[["uuid","=", instance["uuid"]]]).execute().items()[1][1][0]['name']
-        for component, value in instance["components"].iteritems():
-            if "job" in value:
-                if value["job"]["state"] == 'Running':
-		    message += '%s %s\n%s started at: %s\n' % (instance_name, instance['uuid'], component, RFC3339Convert_to_readable(value["job"]["started_at"]))
-		    message += '%s has been running for %s\n' %(component, Time_diff(RFC3339Convert_to_dt(value["job"]["started_at"]),Current_time()))
-        proc = subprocess.Popen(['pipeline_summary.py', instance['uuid']], stdout=subprocess.PIPE)
-        output = proc.stdout.read()
-        message += output
-        message += "\n"
-
-#		if value["job"]["state"] == 'Queued':
-#		    message += '%s\n%s is queued, it was created at: %s\n' % (instance_name, component, RFC3339Convert_to_readable(value["job"]["created_at"]))
-#        message += '\n'
+    num_running = arvados.api().jobs().list(filters=[["state","=","Running"]]).execute()["items_available"]
+    message = 'There are currently %s Jobs running on %s. \n\n' % (str(num_running), options.location)
 
     store = file.Storage(options.storage)
     credz = store.get()
@@ -121,7 +98,7 @@ def main():
         credz = tools.run_flow(flow, store, flags)
     GMAIL = build('gmail', 'v1', http=credz.authorize(Http()))
 
-    message = CreateMessage(options.from_email, options.to_email, '%s pipelines running on %s' % (str(num_running), options.location), message)
+    message = CreateMessage(options.from_email, options.to_email, '%s jobs running on %s' % (str(num_running), options.location), message)
     SendMessage(GMAIL, 'me', message)
 
 if __name__ == '__main__':
